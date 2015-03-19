@@ -30,6 +30,11 @@ import logging
 from enum import Enum
 
 
+class DeviceType(Enum):
+    android = 0
+    ios = 1
+
+
 class MsgType(Enum):
     unicast = 'unicast'
     list_cast = 'listcast'
@@ -195,33 +200,44 @@ class UMMessage(object):
         self.out_biz_no = out_biz_no
         self.app_key = app_key
         self.app_master_secret = app_master_secret
-        self.device_tokens = []
+        self.devices = []
         self.type = None
         self.display_type = None
         self.custom = None
         self.description = description
         self.production_mode = production_mode
         self.url = 'http://msg.umeng.com/api/send'
-        self.params = None
+        self.android_params = None
+        self.ios_params = None
 
     @property
-    def params(self):
-        if self.__params is None:
+    def android_params(self):
+        if self.__android_params is None:
             self.__build_params()
-        return self.__params
+        return self.__android_params
 
-    @params.setter
-    def params(self, params):
-        self.__params = params
+    @android_params.setter
+    def android_params(self, android_params):
+        self.__android_params = android_params
 
-    def set_unicast(self, device_token):
+    @property
+    def ios_params(self):
+        if self.__ios_params is None:
+            self.__build_params()
+        return self.__ios_params
+
+    @ios_params.setter
+    def ios_params(self, ios_params):
+        self.__ios_params = ios_params
+
+    def set_unicast(self, device_token, device_type):
         self.type = MsgType.unicast
-        self.device_tokens = device_token
+        self.devices = [(device_token, device_type)]
         return self
 
-    def set_listcast(self, device_tokens):
+    def set_listcast(self, devices):
         self.type = MsgType.list_cast
-        self.device_tokens = device_tokens
+        self.devices = devices
         return self
 
     def set_broadcast(self):
@@ -252,26 +268,15 @@ class UMMessage(object):
         m = hashlib.md5(s)
         return m.hexdigest()
 
-    def __build_params(self):  # noqa
-        if self.type is None:
-            raise ValueError('message type is None, call set_unicast/set_listcast/set_broadcast/set_message first')
+    def __build_android_params(self, device_tokens, params):
 
         if self.display_type is None:
             raise ValueError('display type is None, call set_notification/set_message first')
 
-        timestamp = int(time.time() * 1000)
-        params = {'appkey': self.app_key,
-                  'timestamp': timestamp,
-                  'type': self.type.value,
-                  'device_tokens': ','.join(self.device_tokens),
-                  'payload': {'body': {},
-                              'display_type': self.display_type.value
-                              },
-                  'policy': {
-                      'out_biz_no': self.out_biz_no
-                      },
-                  'production_mode': 'true' if self.production_mode else 'false',
-                  }
+        params.update({'devics_tokens': ','.join(self.device_tokens),
+                       'payload': {'body': {},
+                                   'display_type': self.display_type.value
+                                   }})
 
         # display_type
         if self.display_type == DisplayType.message:
@@ -323,6 +328,39 @@ class UMMessage(object):
         else:
             raise ValueError('display type not supported')
 
+        return params
+
+    def __build_ios_params(self, device_tokens):
+        # TODO build ios params
+        pass
+
+    def __pick_tokens(self):
+        """
+        pick up device tokens by device type
+        """
+        android_device_token, ios_device_token = [], []
+        for token, _type in self.devices:
+            if _type == DeviceType.android or _type == DeviceType.android.value:
+                android_device_token.append(token)
+            elif _type == DeviceType.ios or _type == DeviceType.ios.value:
+                ios_device_token.append(token)
+
+        return android_device_token, ios_device_token
+
+    def __build_params(self):
+        if self.type is None:
+            raise ValueError('message type is None, call set_unicast/set_listcast/set_broadcast/set_message first')
+
+        timestamp = int(time.time() * 1000)
+        params = {'appkey': self.app_key,
+                  'timestamp': timestamp,
+                  'type': self.type.value,
+                  'policy': {
+                      'out_biz_no': self.out_biz_no
+                      },
+                  'production_mode': 'true' if self.production_mode else 'false',
+                  }
+
         # policy
         for item in ('start_time', 'expire_time', 'max_send_num'):
             value = getattr(self, item, None)
@@ -336,8 +374,12 @@ class UMMessage(object):
         if self.thirdparty_id is not None:
             params.update({'thirdparty_id': self.thirdparty_id})
 
-        self.params = params
-        return params
+        android_device_token, ios_device_token = self.__pick_tokens()
+        import copy
+        self.android_params = self.__build_android_params(android_device_token, copy.deepcopy(params))
+        self.ios_params = self.__build_ios_params(ios_device_token, copy.deepcopy(params))
+
+        return self.android_params, self.ios_params
 
     def __build_sign(self, params):
         post_body = json.dumps(params)
@@ -363,10 +405,7 @@ class UMMessage(object):
         print msg_data
         return msg_data
 
-    def push(self, ):
-
-        params = self.__build_params()
-
+    def __push_message(self, params):
         sign = self.__build_sign(params)
 
         r = requests.post(self.url + '?sign='+sign, data=json.dumps(params))
@@ -388,6 +427,23 @@ class UMMessage(object):
             from yl_umeng_api.services.message.error_codes import UMHTTPError
 
             raise UMHTTPError(status_code)
+
+    def push(self, ):
+
+        android_params, ios_params = self.__build_params()
+        a_data, i_data = None, None
+
+        try:
+            a_data = self.__push_message(android_params)
+        except Exception as e:
+            logging.exception(e)
+
+        try:
+            i_data = self.__push_message(ios_params)
+        except Exception as e:
+            logging.exception(e)
+
+        return a_data, i_data
 
 
 if __name__ == "__main__":
