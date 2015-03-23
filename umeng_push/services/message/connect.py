@@ -330,9 +330,15 @@ class UMMessage(object):
 
         return params
 
-    def __build_ios_params(self, device_tokens):
-        # TODO build ios params
-        pass
+    def __build_ios_params(self, device_tokens, params):
+        params.update({'devics_tokens': ','.join(self.device_tokens),
+                       'payload': {'aps': {},
+                                   }})
+
+        params['payload']['aps'].update({'alert': self.notification.title})
+        extra_value = getattr(self.notification, 'extra')
+        if extra_value is not None:
+            params['payload'].update(extra_value)
 
     def __pick_tokens(self):
         """
