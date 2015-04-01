@@ -209,26 +209,27 @@ class UMMessage(object):
         self.url = 'http://msg.umeng.com/api/send'
         self.android_params = None
         self.ios_params = None
+        self.notification = None
 
-    @property
-    def android_params(self):
-        if self.__android_params is None:
-            self.__build_params()
-        return self.__android_params
-
-    @android_params.setter
-    def android_params(self, android_params):
-        self.__android_params = android_params
-
-    @property
-    def ios_params(self):
-        if self.__ios_params is None:
-            self.__build_params()
-        return self.__ios_params
-
-    @ios_params.setter
-    def ios_params(self, ios_params):
-        self.__ios_params = ios_params
+    # @property
+    # def android_params(self):
+    #     if self.__android_params is None:
+    #         self.__build_params()
+    #     return self.__android_params
+    #
+    # # @android_params.setter
+    # def android_params(self, android_params):
+    #     self.__android_params = android_params
+    #
+    # @property
+    # def ios_params(self):
+    #     if self.__ios_params is None:
+    #         self.__build_params()
+    #     return self.__ios_params
+    #
+    # # @ios_params.setter
+    # def ios_params(self, ios_params):
+    #     self.__ios_params = ios_params
 
     def set_unicast(self, device_token, device_type):
         self.type = MsgType.unicast
@@ -269,11 +270,12 @@ class UMMessage(object):
         return m.hexdigest()
 
     def __build_android_params(self, device_tokens, params):
-
+        if not device_tokens:
+            return None
         if self.display_type is None:
             raise ValueError('display type is None, call set_notification/set_message first')
 
-        params.update({'devics_tokens': ','.join(self.device_tokens),
+        params.update({'device_tokens': ','.join(device_tokens),
                        'payload': {'body': {},
                                    'display_type': self.display_type.value
                                    }})
@@ -331,7 +333,7 @@ class UMMessage(object):
         return params
 
     def __build_ios_params(self, device_tokens, params):
-        params.update({'devics_tokens': ','.join(self.device_tokens),
+        params.update({'device_tokens': ','.join(device_tokens),
                        'payload': {'aps': {},
                                    }})
 
@@ -339,6 +341,7 @@ class UMMessage(object):
         extra_value = getattr(self.notification, 'extra')
         if extra_value is not None:
             params['payload'].update(extra_value)
+        return params
 
     def __pick_tokens(self):
         """
@@ -412,10 +415,11 @@ class UMMessage(object):
         return msg_data
 
     def __push_message(self, params):
+        if not params:
+            return
         sign = self.__build_sign(params)
-
         r = requests.post(self.url + '?sign='+sign, data=json.dumps(params))
-        from yl_umeng_api.services.message.error_codes import HTTPStatusCode
+        from error_codes import HTTPStatusCode
 
         status_code = HTTPStatusCode(r.status_code)
         if status_code == HTTPStatusCode.OK:
@@ -426,11 +430,11 @@ class UMMessage(object):
             # return failure
             rt_data = self.__process_rt_data(r.text)
 
-            from yl_umeng_api.services.message.error_codes import UMPushError, APIServerErrorCode
+            from error_codes import UMPushError, APIServerErrorCode
 
             raise UMPushError(APIServerErrorCode(int(rt_data.error_code)), params)
         else:
-            from yl_umeng_api.services.message.error_codes import UMHTTPError
+            from error_codes import UMHTTPError
 
             raise UMHTTPError(status_code)
 
@@ -453,25 +457,25 @@ class UMMessage(object):
 
 
 if __name__ == "__main__":
-    UMENG_APP_KEY = '527203e256240b705d06fafa'
-    UMENG_APP_MASTER_SECRET = '8ghx471whykgxigizjzpawhczdk9bokv'
+    UMENG_APP_KEY = ''
+    UMENG_APP_MASTER_SECRET = ''
     import shortuuid
     m = UMMessage(out_biz_no=shortuuid.uuid(),
                   description='test',
                   app_key=UMENG_APP_KEY,
                   app_master_secret=UMENG_APP_MASTER_SECRET
                   )
-    # m.set_unicast(['AqeMKU0exV4f80YUac3JEVccuuELHuFdjH5EO-m6rU3z'])  # Wang Tai's mobile
+    m.set_unicast('', DeviceType.ios)  # iphone 6 test
     notif = UMNotification(
-        ticker='test',
-        title='test',
-        text='test',
-        extra={'m': 'k', 'm2': 'k2'}
+        ticker='test_ticker',
+        title='test_title',
+        text='test_text',
+        extra={'display_type': 'notification'},
     )
     notif.set_go_custom('follow')
     print str(notif)
     notif = UMNotification.load_data(str(notif))
     m.set_notification(notif)
     print str(notif)
-    print m.params
+    # print m.params
     m.push()
