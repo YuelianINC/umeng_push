@@ -5,6 +5,9 @@ import json
 import urllib2
 
 import requests
+import shortuuid
+from umeng_push.services.message.connect import UMNotification
+from services.message.connect import UMMessage
 
 
 def md5(s):
@@ -43,9 +46,29 @@ def push_unicast(appkey, app_master_secret, device_token):
         print e.reason
 
 
+def push_listcast(appkey, app_master_secret, push_infos):
+    m = UMMessage(out_biz_no=shortuuid.uuid(),
+                  description=u'有人投票',
+                  production_mode=False,
+                  app_key=appkey,
+                  app_master_secret=app_master_secret,
+                  )
+    if type(push_infos) in (list, tuple):
+        m.set_listcast([(info.umeng_device_token, info.umeng_device_type) for info in push_infos])
+    notif = UMNotification(
+        text=u'有人投票',
+        ticker='test',
+        title=u'有人投票',
+        extra={'display_type': 'notification'},
+    )
+    notif.set_go_custom('follow')
+    notif = UMNotification.load_data(str(notif))
+    m.set_notification(notif)
+    m.push()
+
 if __name__ == '__main__':
-    appkey = ''
-    app_master_secret = ''
+    appkey = '536c939e56240b1f8c0441cf'
+    app_master_secret = 'kmq5tvykbz1il4wksfotfca0upozdcou',
     device_token = ''
 
-    push_unicast(appkey, app_master_secret, device_token)
+    # push_unicast(appkey, app_master_secret, device_token)
