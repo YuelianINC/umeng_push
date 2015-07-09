@@ -79,7 +79,6 @@ class UMNotification(object):
                  title,  # 通知标题
                  text,  # 通知文字描述
                  builder_id=0,  # 开发者必须在SDK里面实现自定义通知栏样式。
-                 badge=None,  # iOS 通知数角标
                  icon=None,
                  large_icon=None,
                  img=None,
@@ -104,7 +103,6 @@ class UMNotification(object):
         self.img = img
         self.sound = sound
         self.builder_id = builder_id
-        self.badge = badge
         self.play_vibrate = play_vibrate
         self.play_lights = play_lights
         self.play_sound = play_sound
@@ -340,12 +338,11 @@ class UMMessage(object):
                                    }})
 
         params['payload']['aps'].update({'alert': self.notification.title})
-        badge = getattr(self.notification, 'badge')
-        if badge:
-            params['payload']['aps'].update({'badge': badge})
         extra_value = getattr(self.notification, 'extra')
         if extra_value is not None:
             params['payload'].update(extra_value)
+            if 'badge' in extra_value:
+                params['payload']['aps'].update({'badge': extra_value['badge']})
         return params
 
     def __pick_tokens(self):
