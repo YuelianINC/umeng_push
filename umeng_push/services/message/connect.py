@@ -338,6 +338,9 @@ class UMMessage(object):
                                    }})
 
         params['payload']['aps'].update({'alert': self.notification.title})
+        badge = getattr(self.notification, 'badge')
+        if badge:
+            params['payload']['aps'].update({'badge': badge})
         extra_value = getattr(self.notification, 'extra')
         if extra_value is not None:
             params['payload'].update(extra_value)
