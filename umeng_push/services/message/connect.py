@@ -421,6 +421,7 @@ class UMMessage(object):
             return
         sign = self.__build_sign(params)
         r = requests.post(self.url + '?sign='+sign, data=json.dumps(params))
+        logging.critical(r.text)
         from error_codes import HTTPStatusCode
 
         status_code = HTTPStatusCode(r.status_code)
