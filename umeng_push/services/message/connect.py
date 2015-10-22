@@ -232,9 +232,9 @@ class UMMessage(object):
     # def ios_params(self, ios_params):
     #     self.__ios_params = ios_params
 
-    def set_unicast(self, device_token, device_type):
+    def set_unicast(self, device):
         self.type = MsgType.unicast
-        self.devices = [(device_token, device_type)]
+        self.devices = device
         return self
 
     def set_listcast(self, devices):
