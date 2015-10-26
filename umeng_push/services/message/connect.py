@@ -204,6 +204,7 @@ class UMMessage(object):
         self.type = None
         self.display_type = None
         self.custom = None
+        self.content = None
         self.description = description
         self.production_mode = production_mode
         self.url = 'http://msg.umeng.com/api/send'
@@ -243,6 +244,12 @@ class UMMessage(object):
 
     def set_broadcast(self):
         self.type = MsgType.broadcast
+        return self
+
+    def set_message_custom(self, flag, message_body=None):
+        self.display_type = DisplayType.message
+        self.custom = flag
+        self.content = message_body
         return self
 
     def set_message(self, message_body):
@@ -285,6 +292,7 @@ class UMMessage(object):
             if self.custom is None:
                 raise ValueError('custom parameter is None')
             params['payload']['body'].update({'custom': self.custom})
+            params['payload'].update({'extra': self.content})
 
         elif self.display_type == DisplayType.notification:
             # check required parameters
@@ -333,16 +341,21 @@ class UMMessage(object):
         return params
 
     def __build_ios_params(self, device_tokens, params):
+        if not device_tokens:
+            return None
         params.update({'device_tokens': ','.join(device_tokens),
                        'payload': {'aps': {},
                                    }})
-
-        params['payload']['aps'].update({'alert': self.notification.title})
-        extra_value = getattr(self.notification, 'extra')
-        if extra_value is not None:
-            params['payload'].update(extra_value)
-            if 'badge' in extra_value:
-                params['payload']['aps'].update({'badge': extra_value['badge']})
+        if getattr(self, 'notification') is None:
+            params['payload']['aps'].update({'alert': u"消息"})
+            params['payload']['extra'] = self.content
+        else:
+            params['payload']['aps'].update({'alert': self.notification.title})
+            extra_value = getattr(self.notification, 'extra')
+            if extra_value is not None:
+                params['payload'].update(extra_value)
+                if 'badge' in extra_value:
+                    params['payload']['aps'].update({'badge': extra_value['badge']})
         return params
 
     def __pick_tokens(self):
