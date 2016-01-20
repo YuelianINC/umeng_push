@@ -489,9 +489,7 @@ if __name__ == "__main__":
         extra={'display_type': 'notification'},
     )
     notif.set_go_custom('follow')
-    print str(notif)
     notif = UMNotification.load_data(str(notif))
     m.set_notification(notif)
-    print str(notif)
     # print m.params
     m.push()
