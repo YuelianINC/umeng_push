@@ -67,8 +67,8 @@ def push_listcast(appkey, app_master_secret, push_infos):
     m.push()
 
 if __name__ == '__main__':
-    appkey = '536c939e56240b1f8c0441cf'
-    app_master_secret = 'kmq5tvykbz1il4wksfotfca0upozdcou',
+    appkey = ''
+    app_master_secret = '',
     device_token = ''
 
     # push_unicast(appkey, app_master_secret, device_token)
