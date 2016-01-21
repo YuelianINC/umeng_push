@@ -165,7 +165,7 @@ class UMNotification(object):
     def __str__(self):
         attrs = vars(self)
         data = {}
-        for key, value in attrs.items():
+        for key, value in list(attrs.items()):
             if value == AfterOpenType.go_app:
                 value = 'AfterOpenType.go_app'
             elif value == AfterOpenType.go_activity:
@@ -273,7 +273,10 @@ class UMMessage(object):
         return self
 
     def __md5(self, s):
-        m = hashlib.md5(s)
+        if isinstance(s, str):
+            m = hashlib.md5(s.encode())
+        else:
+            m = hashlib.md5(s)
         return m.hexdigest()
 
     def __build_android_params(self, device_tokens, params):
@@ -347,7 +350,7 @@ class UMMessage(object):
                        'payload': {'aps': {},
                                    }})
         if getattr(self, 'notification') is None:
-            params['payload']['aps'].update({'alert': u"消息"})
+            params['payload']['aps'].update({'alert': "消息"})
             params['payload']['extra'] = self.content
         else:
             params['payload']['aps'].update({'alert': self.notification.title})
@@ -416,7 +419,7 @@ class UMMessage(object):
         # process return data
         data = json.loads(ret_text)
         logging.debug(data)
-        print data
+        print(data)
         if data.get('ret') == 'SUCCESS':
             msg_data = MsgReturnData(ret=data.get('ret'),
                                      thirdparty_id=data.get('data').get('thirdparty_id'),
@@ -426,7 +429,7 @@ class UMMessage(object):
                                      thirdparty_id=data.get('data').get('thirdparty_id'),
                                      error_code=data.get('data').get('error_code'))
 
-        print msg_data
+        print(msg_data)
         return msg_data
 
     def __push_message(self, params):
@@ -435,7 +438,7 @@ class UMMessage(object):
         sign = self.__build_sign(params)
         r = requests.post(self.url + '?sign='+sign, data=json.dumps(params))
         logging.critical(r.text)
-        from error_codes import HTTPStatusCode
+        from .error_codes import HTTPStatusCode
 
         status_code = HTTPStatusCode(r.status_code)
         if status_code == HTTPStatusCode.OK:
@@ -446,11 +449,11 @@ class UMMessage(object):
             # return failure
             rt_data = self.__process_rt_data(r.text)
 
-            from error_codes import UMPushError, APIServerErrorCode
+            from .error_codes import UMPushError, APIServerErrorCode
 
             raise UMPushError(APIServerErrorCode(int(rt_data.error_code)), params)
         else:
-            from error_codes import UMHTTPError
+            from .error_codes import UMHTTPError
 
             raise UMHTTPError(status_code)
 

@@ -2,12 +2,12 @@
 import time
 import hashlib
 import json
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 
 import requests
 import shortuuid
 from umeng_push.services.message.connect import UMNotification
-from services.message.connect import UMMessage
+from .services.message.connect import UMMessage
 
 
 def md5(s):
@@ -33,22 +33,22 @@ def push_unicast(appkey, app_master_secret, device_token):
                           }
               }
     post_body = json.dumps(params)
-    print post_body
+    print(post_body)
     sign = md5('%s%s%s%s' % (method, url, post_body, app_master_secret))
     try:
         r = requests.post(url + '?sign=' + sign, data=post_body)
-        print r.content
+        print(r.content)
         # r = urllib2.urlopen(url + '?sign='+sign, data=post_body)
         # print r.read()
-    except urllib2.HTTPError, e:
-        print e.reason, e.read()
-    except urllib2.URLError, e:
-        print e.reason
+    except urllib.error.HTTPError as e:
+        print(e.reason, e.read())
+    except urllib.error.URLError as e:
+        print(e.reason)
 
 
 def push_listcast(appkey, app_master_secret, push_infos):
     m = UMMessage(out_biz_no=shortuuid.uuid(),
-                  description=u'有人投票',
+                  description='有人投票',
                   production_mode=False,
                   app_key=appkey,
                   app_master_secret=app_master_secret,
@@ -56,9 +56,9 @@ def push_listcast(appkey, app_master_secret, push_infos):
     if type(push_infos) in (list, tuple):
         m.set_listcast([(info.umeng_device_token, info.umeng_device_type) for info in push_infos])
     notif = UMNotification(
-        text=u'有人投票',
+        text='有人投票',
         ticker='test',
-        title=u'有人投票',
+        title='有人投票',
         extra={'display_type': 'notification'},
     )
     notif.set_go_custom('follow')
