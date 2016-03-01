@@ -12,7 +12,7 @@ except:
 
 setup(
     name='umeng_push',
-    version='0.1',
+    version='0.3',
     packages=find_packages(),
     author='WANG Tai',
     author_email='i@wangtai.me',
